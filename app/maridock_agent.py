@@ -1,256 +1,76 @@
-# from phi.agent import Agent
-# from phi.model.groq import Groq
-# from dotenv import load_dotenv
-# import os
-
-# # Load environment variables from .env (expects GROQ_API_KEY)
-# load_dotenv()
-
-# # Initialize the Groq model
-# groq_api_key = os.getenv("GROQ_API_KEY")
-# model = Groq(id="llama3-70b-8192", api_key=groq_api_key)
-
-# # Create an agent with the model
-# agent = Agent(model=model)
-
-# # Define user input and prompt
-# user_input = "Main Engine Fuel Pump Overhauls"
-
-# prompt = f"""
-# Draft Professional but Generic Drydock Specifications for:-
-
-# << user input >> "{user_input}"
-
-# and provide report in the format –in the following sections of DESCRIPTION, SCOPE OF WORK/INSTRUCTIONS, MATERIAL & SUPPORT, SERVICE LINES, APPROVAL & SUPERVISION. Report in Uniform Font- Font family - 'Poppins', sans-serif; Font size: 14px, Remove spacing between Paragraphs and lines. Only 1 line spacing for Header/sub header from last section end.
-
-# Print title of the SPECIFICATION in CAPITAL & BOLD
-
-# DESCRIPTION
-
-# This specification covers the…..
-
-# Inventory Identification to be included in the DESCRIPTION Section. Allow Placeholders to list the different inventory on board, specify MAKE, MODEL, TYPE, OUTPUT / RATING, QTY – as RELEVANT for the ITEM & JOB - allow placeholders like [ ], to allow filling of items like MAKE, MODEL, TYPE, QUANTITY, NUMBER OF UNITS, LOCATION and Other Units of Measurements & specific details in the DESCRIPTION SECTION. Function of item / unit in Description NOT required.
-
-# Location: 
-
-# SCOPE OF WORK / INSTRUCTIONS
-
-# Preparatory Measures:
-
-# Job Breakdown:
-
-# Standards & Compliance:
-
-# Documentation:
-
-# MATERIAL & SUPPORT
-
-# Quantity of resources under MATERIAL & SUPPORT not required.
-
-# Yard Supply:
-
-# Test Equipment Required:
-
-# Access & Logistics:
-
-# SERVICE LINES
-
-# APPROVALS & SUPERVISION
-
-# Work Authorization:
-# """
-
-
-# # Run prompt and extract content from first message
-# response = agent.run(prompt)
-# # print(response.messages[1].content)
-# output_text = response.messages[1].content  # ✅ FIXED
-
-# # Format as HTML
-# html_output = f"""
-# <!DOCTYPE html>
-# <html lang="en">
-# <head>
-#     <meta charset="UTF-8">
-#     <title>Drydock Specification - {user_input}</title>
-#     <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
-#     <style>
-#         body {{
-#             font-family: 'Poppins', sans-serif;
-#             font-size: 14px;
-#             line-height: 1.4;
-#             margin: 40px;
-#             white-space: pre-wrap;
-#         }}
-#         .title {{
-#             font-weight: bold;
-#             text-transform: uppercase;
-#             font-size: 18px;
-#             margin-bottom: 1em;
-#         }}
-#     </style>
-# </head>
-# <body>
-#     <div class="title">{user_input}</div>
-#     <div>{output_text}</div>
-# </body>
-# </html>
-# """
-
-# # Save output
-# with open("drydock_specification.html", "w", encoding="utf-8") as f:
-#     f.write(html_output)
-
-# print("✅ HTML specification page generated: drydock_specification.html")
-
-
-from phi.agent import Agent
-from phi.model.groq import Groq
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
+from groq import Groq
+from reflection_pattern.reflection_agent import ReflectionAgent
 
-# Load environment variables
 load_dotenv()
 
-# Initialize the Groq model
-groq_api_key = os.getenv("GROQ_API_KEY")
-model = Groq(id="llama3-70b-8192", api_key=groq_api_key)
-agent = Agent(model=model)
+# Create reflection agent
+model1="meta-llama/llama-4-scout-17b-16e-instruct"
+model2="llama3-70b-8192"
+model3='gemma2-9b-it'
+agent = ReflectionAgent(model=model3)
 
-# Define user input and prompt
-user_input = "Main Engine Fuel Pump Overhauls"
+def generate_drydock_specification(user_input):
+    prompt = f"""
+    Generate a professional drydock specification in Word-compatible HTML for:
+    {user_input}
 
-prompt = f"""
-Draft Professional but Generic Drydock Specifications for:-
+    ### FORMAT GUIDELINES ###
+    - Title: <div class="main-title">REPAIR SPECIFICATION: {user_input.upper()}</div>
+    - Sections:
+        1. DESCRIPTION
+        2. SCOPE OF WORK / INSTRUCTIONS (includes Preparatory Measures, Job Breakdown, Safety Controls, Standards & Compliance, Documentation)
+        3. MATERIAL & SUPPORT
+        4. SERVICE LINES (must be a bordered table)
+        5. APPROVALS & SUPERVISION
+    - Use span tags with class="placeholder" for placeholders like [MAKE], [MODEL], [LOCATION]
+    - Font: 'Poppins', font-size: 14px, line-height: 1.6
+    - Use <ul>, <ol>, and <table> appropriately
+    - Include class="safety-box" for Safety Controls section
+    - Output HTML body content only (without <html> or <head> tags)
+    """
 
-<< user input >> "{user_input}"
+    output = agent.run(
+        user_msg=prompt,
+        generation_system_prompt="You are a marine technical writer creating structured, class-compliant drydock specification HTML documents for Word.",
+        reflection_system_prompt="You are a ship superintendent reviewing HTML drydock specifications. Ensure all 5 required sections are present, formatted correctly, and styled with placeholders and classes (like 'main-title', 'placeholder', 'safety-box', and table structure). If formatting or content deviates, fix it.",
+        n_steps=2,
+        verbose=1
+    )
 
-and provide report in the format –in the following sections of DESCRIPTION, SCOPE OF WORK/INSTRUCTIONS, MATERIAL & SUPPORT, SERVICE LINES, APPROVAL & SUPERVISION. Report in Uniform Font- Font family - 'Poppins', sans-serif; Font size: 14px, Remove spacing between Paragraphs and lines. Only 1 line spacing for Header/sub header from last section end.
+    safe_filename = user_input.replace(" ", "_").replace("/", "_").replace("\\", "_")
 
-Print title of the SPECIFICATION in CAPITAL & BOLD
+    html_template = f"""
+    <!DOCTYPE html>
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="ProgId" content="Word.Document">
+      <meta name="Generator" content="Microsoft Word">
+      <meta name="Originator" content="Microsoft Word">
+      <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+      <style>
+        body {{ font-family: 'Poppins', sans-serif; font-size: 14px; line-height: 1.6; margin: 20px; }}
+        .main-title {{ font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; }}
+        .section-header {{ background-color: #000; color: #fff; font-weight: bold; padding: 8px 12px; margin: 20px 0 10px 0; text-transform: uppercase; }}
+        .placeholder {{ background-color: #e3f2fd; color: #0d47a1; font-weight: 600; padding: 2px 4px; }}
+        .subsection-title {{ font-weight: 700; margin: 10px 0 5px 0; }}
+        .safety-box {{ background-color: #fff3cd !important; border: 2px solid #ffeaa7; padding: 15px; margin: 15px 0; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 13px; }}
+        th, td {{ border: 1px solid #000; padding: 8px; text-align: left; vertical-align: top; }}
+        th {{ background-color: #f8f9fa; font-weight: 700; text-align: center; }}
+      </style>
+    </head>
+    <body>
+      <div class="main-title">REPAIR SPECIFICATION: {user_input.upper()}</div>
+      {output}
+    </body>
+    </html>
+    """
 
-DESCRIPTION
+    os.makedirs("html_pages", exist_ok=True)
+    with open(f"html_pages/{safe_filename}_drydock_specification.html", "w", encoding="utf-8") as f:
+        f.write(html_template)
 
-This specification covers the…..
-
-Inventory Identification to be included in the DESCRIPTION Section. Allow Placeholders to list the different inventory on board, specify MAKE, MODEL, TYPE, OUTPUT / RATING, QTY – as RELEVANT for the ITEM & JOB - allow placeholders like [ ], to allow filling of items like MAKE, MODEL, TYPE, QUANTITY, NUMBER OF UNITS, LOCATION and Other Units of Measurements & specific details in the DESCRIPTION SECTION. Function of item / unit in Description NOT required.
-
-Location: 
-
-SCOPE OF WORK / INSTRUCTIONS
-
-Preparatory Measures:
-
-Job Breakdown:
-
-Standards & Compliance:
-
-Documentation:
-
-MATERIAL & SUPPORT
-
-Quantity of resources under MATERIAL & SUPPORT not required.
-
-Yard Supply:
-
-Test Equipment Required:
-
-Access & Logistics:
-
-SERVICE LINES
-
-APPROVALS & SUPERVISION
-
-Work Authorization:
-"""
-
-# Run the agent
-response = agent.run(prompt)
-
-# Extract model content
-output_text = response.messages[1].content if len(response.messages) > 1 else response.messages[0].content
-
-# Optional: Enhance Inventory Identification with HTML Table
-inventory_table = """
-<h2>Inventory Identification</h2>
-<table border="1" cellspacing="0" cellpadding="8" style="border-collapse: collapse; width: 100%; font-family: 'Poppins', sans-serif; font-size: 14px;">
-  <thead style="background-color: #f2f2f2; font-weight: bold;">
-    <tr>
-      <th>Item</th>
-      <th>Make</th>
-      <th>Model</th>
-      <th>Type</th>
-      <th>Output/Rating</th>
-      <th>Qty</th>
-      <th>Location</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>[Main Engine Fuel Pump]</td>
-      <td>[MAKE]</td>
-      <td>[MODEL]</td>
-      <td>[TYPE]</td>
-      <td>[OUTPUT/RATING]</td>
-      <td>[QTY]</td>
-      <td>[LOCATION]</td>
-    </tr>
-    <tr>
-      <td>[Spare Fuel Pump]</td>
-      <td>[MAKE]</td>
-      <td>[MODEL]</td>
-      <td>[TYPE]</td>
-      <td>[OUTPUT/RATING]</td>
-      <td>[QTY]</td>
-      <td>[LOCATION]</td>
-    </tr>
-  </tbody>
-</table>
-"""
-
-# Inject the table into the response if applicable
-if "Inventory Identification:" in output_text:
-    output_text = output_text.replace("Inventory Identification:", f"Inventory Identification:\n{inventory_table}")
-else:
-    output_text = inventory_table + "\n" + output_text
-
-# Compose HTML
-html_output = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Drydock Specification - {user_input}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
-    <style>
-        body {{
-            font-family: 'Poppins', sans-serif;
-            font-size: 14px;
-            line-height: 1.4;
-            margin: 40px;
-            white-space: pre-wrap;
-        }}
-        .title {{
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 18px;
-            margin-bottom: 1em;
-        }}
-        table {{
-            margin-top: 1em;
-            margin-bottom: 1em;
-        }}
-    </style>
-</head>
-<body>
-    <div class="title">{user_input}</div>
-    <div>{output_text}</div>
-</body>
-</html>
-"""
-
-# Save to file
-with open("drydock_specification.html", "w", encoding="utf-8") as f:
-    f.write(html_output)
-
-print("✅ HTML specification page generated: drydock_specification.html")
+    print(f"✅ Saved: html_pages/{safe_filename}_drydock_specification.html")
